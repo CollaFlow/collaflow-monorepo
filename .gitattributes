@@ -1,0 +1,5 @@
+# 仓库内统一使用 LF：Windows 检出不再转成 CRLF，避免整文件 diff
+* text=auto eol=lf
+
+# 锁定行尾不参与 diff/语言统计
+pnpm-lock.yaml linguist-generated=true
