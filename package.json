@@ -12,6 +12,7 @@
   "scripts": {
     "build": "pnpm --filter \"@collaflow/*\" run build",
     "dev": "pnpm --parallel --filter \"@collaflow/*\" run dev",
+    "dev:collacore": "pnpm --filter @collaflow/collacore run dev",
     "test": "pnpm --filter \"@collaflow/*\" run test",
     "test:watch": "pnpm --parallel --filter \"@collaflow/*\" run test:watch",
     "typecheck": "pnpm --filter \"@collaflow/*\" run typecheck",

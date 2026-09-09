@@ -1,8 +1,7 @@
 {
   "name": "@collaflow/collacore",
-  "version": "0.0.0",
-  "private": true,
-  "description": "CollaCore — CollaFlow 协同服务核心（同步、鉴权、房间管理）",
+  "version": "0.1.0",
+  "description": "CollaCore — CollaFlow 协同服务核心（同步、房间管理、协同编辑）",
   "license": "Apache-2.0",
   "type": "commonjs",
   "engines": {
@@ -31,6 +30,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "fastify": "^4.28.1",
+    "@fastify/websocket": "^8.3.1",
+    "ioredis": "^5.4.1",
+    "yjs": "^13.6.18"
   },
   "devDependencies": {}
 }
