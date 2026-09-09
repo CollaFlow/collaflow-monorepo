@@ -23,6 +23,9 @@ importers:
       '@types/node':
         specifier: ^20.17.6
         version: 20.19.43
+      ajv:
+        specifier: ^8.17.1
+        version: 8.20.0
       commitizen:
         specifier: ^4.3.2
         version: 4.3.2(@types/node@20.19.43)(typescript@5.9.3)
@@ -32,6 +35,9 @@ importers:
       husky:
         specifier: ^9.1.7
         version: 9.1.7
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.3.2
       lint-staged:
         specifier: ^15.5.2
         version: 15.5.2

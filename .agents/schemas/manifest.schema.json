@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://collaflow.io/schemas/skill-manifest.json",
+  "title": "CollaFlow Skill Manifest",
+  "description": "CollaFlow 项目级 Skill 的元数据 Schema",
+  "type": "object",
+  "required": ["name", "version", "owner", "status"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Skill 全局唯一标识，使用 kebab-case",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Skill 一句话描述"
+    },
+    "version": {
+      "type": "string",
+      "description": "遵循 SemVer",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-([a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*))?(?:\\+([a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*))?$"
+    },
+    "owner": {
+      "type": "string",
+      "description": "负责人或负责团队，如 frontend-guild"
+    },
+    "scope": {
+      "type": "array",
+      "description": "适用的子包/模块列表",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "description": "Skill 生命周期状态",
+      "enum": ["draft", "active", "deprecated"]
+    },
+    "dependencies": {
+      "type": "object",
+      "description": "Skill 依赖声明",
+      "properties": {
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "value"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["mcp", "cli", "api", "skill"]
+              },
+              "value": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "transport": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "skills": {
+          "type": "array",
+          "description": "依赖的其他 Skill",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "triggers": {
+      "type": "array",
+      "description": "触发该 Skill 的关键词或场景",
+      "items": {
+        "type": "string"
+      }
+    },
+    "replaces": {
+      "type": "array",
+      "description": "被本 Skill 替代的旧 Skill 名称",
+      "items": {
+        "type": "string"
+      }
+    },
+    "generic": {
+      "type": "boolean",
+      "description": "标记是否为可跨项目复用的通用能力 Skill",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

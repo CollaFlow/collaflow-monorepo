@@ -1,0 +1,16 @@
+name: <skill-name>
+description: <一句话描述该 Skill 的用途>
+version: 0.1.0
+owner: <team-or-person>
+status: draft
+scope:
+  - collacore
+  - collamind
+  - collamarkdown
+dependencies:
+  tools: []
+  skills: []
+triggers:
+  - <trigger-keyword>
+replaces: []
+generic: false

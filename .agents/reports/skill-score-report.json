@@ -1,0 +1,17 @@
+{
+  "evaluatedAt": "2026-09-09T08:15:34.497Z",
+  "rubric": "collaflow@1.0.0",
+  "thresholds": {
+    "block": 60,
+    "warn": 80,
+    "good": 90
+  },
+  "skills": [],
+  "summary": {
+    "total": 0,
+    "block": 0,
+    "warn": 0,
+    "good": 0,
+    "generic": 0
+  }
+}

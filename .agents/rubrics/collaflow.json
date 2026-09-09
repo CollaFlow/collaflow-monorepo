@@ -1,0 +1,47 @@
+{
+  "version": "1.0.0",
+  "name": "collaflow",
+  "description": "CollaFlow 项目级 Skill 质量评分 rubric",
+  "maxScore": 100,
+  "dimensions": {
+    "completeness": {
+      "weight": 20,
+      "name": "完整性",
+      "description": "Skill 结构完整，包含 SKILL.md、manifest.yaml 和必要 frontmatter"
+    },
+    "consistency": {
+      "weight": 20,
+      "name": "一致性",
+      "description": "SKILL.md frontmatter 与 manifest.yaml 一致，引用资源存在"
+    },
+    "clarity": {
+      "weight": 20,
+      "name": "清晰性",
+      "description": "规则明确、无歧义，有清晰的触发条件"
+    },
+    "executability": {
+      "weight": 20,
+      "name": "可执行性",
+      "description": "有示例、有步骤、Agent 可按照规则执行"
+    },
+    "reusability": {
+      "weight": 15,
+      "name": "复用性",
+      "description": "可被其他项目复用，scope 清晰，不绑定过多项目细节"
+    },
+    "security": {
+      "weight": 5,
+      "name": "安全性",
+      "description": "无密钥、内网地址、个人隐私数据"
+    }
+  },
+  "thresholds": {
+    "block": 60,
+    "warn": 80,
+    "good": 90
+  },
+  "rules": {
+    "genericMinScore": 90,
+    "genericStableVersions": 2
+  }
+}

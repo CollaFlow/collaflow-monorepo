@@ -11,6 +11,7 @@ const SCOPES = [
   'deps',
   'ci',
   'release',
+  'skills',
 ];
 
 const TYPES = [

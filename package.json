@@ -16,6 +16,7 @@
     "test:watch": "pnpm --parallel --filter \"@collaflow/*\" run test:watch",
     "typecheck": "pnpm --filter \"@collaflow/*\" run typecheck",
     "clean": "pnpm --filter \"@collaflow/*\" run clean",
+    "skills:validate": "node scripts/skill-governance.mjs",
     "commit": "cz",
     "changeset": "changeset",
     "version-packages": "changeset version",
@@ -32,7 +33,8 @@
         "root",
         "deps",
         "ci",
-        "release"
+        "release",
+        "skills"
       ]
     }
   },
@@ -49,6 +51,8 @@
     "commitizen": "^4.3.2",
     "cz-conventional-changelog": "^3.3.0",
     "husky": "^9.1.7",
+    "js-yaml": "^4.1.0",
+    "ajv": "^8.17.1",
     "lint-staged": "^15.5.2",
     "rimraf": "^5.0.10",
     "tsup": "^8.3.5",
