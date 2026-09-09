@@ -1,0 +1,18 @@
+name: collamarkdown-tech-spec
+description: CollaMarkdown 技术方案 Skill：定义基于 Milkdown + ProseMirror + Yjs 的协作文档架构、扩展规范与实现步骤
+version: 0.1.0
+owner: collaflow-core-team
+status: draft
+scope:
+  - '@collaflow/collamarkdown'
+triggers:
+  - collamarkdown
+  - 协作文档
+  - Milkdown
+  - Markdown 编辑器
+  - 文档协同
+  - 代码高亮
+  - 版本对比
+dependencies:
+  skills:
+    - collaflow-skill-manager

@@ -1,17 +1,37 @@
 {
-  "evaluatedAt": "2026-09-09T08:15:34.497Z",
+  "evaluatedAt": "2026-09-09T10:58:19.890Z",
   "rubric": "collaflow@1.0.0",
   "thresholds": {
     "block": 60,
     "warn": 80,
     "good": 90
   },
-  "skills": [],
+  "skills": [
+    {
+      "name": "collamarkdown-tech-spec",
+      "path": ".agents/skills/collamarkdown-tech-spec",
+      "version": "0.1.0",
+      "status": "draft",
+      "generic": false,
+      "total": 87,
+      "dimensions": {
+        "completeness": 20,
+        "consistency": 20,
+        "clarity": 20,
+        "executability": 20,
+        "reusability": 7,
+        "security": 5
+      },
+      "suggestions": [
+        "Skill 中绑定过多项目专属名词，建议抽象为通用规则"
+      ]
+    }
+  ],
   "summary": {
-    "total": 0,
+    "total": 1,
     "block": 0,
     "warn": 0,
-    "good": 0,
+    "good": 1,
     "generic": 0
   }
 }

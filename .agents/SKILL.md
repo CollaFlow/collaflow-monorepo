@@ -110,7 +110,7 @@ pnpm skills:validate
 
 | Skill | 路径 | 版本 | Owner | 状态 | 总分 | 通用 |
 |---|---|---|---|---|---|---|
-| （暂无） | — | — | — | — | — | — |
+| collamarkdown-tech-spec | `.agents/skills/collamarkdown-tech-spec` | 0.1.0 | collaflow-core-team | draft | — | — |
 
 ### 通用能力 Skill
 
