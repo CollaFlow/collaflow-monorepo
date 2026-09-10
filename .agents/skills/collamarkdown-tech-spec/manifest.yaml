@@ -1,8 +1,8 @@
 name: collamarkdown-tech-spec
-description: CollaMarkdown 技术方案 Skill：定义基于 Milkdown + ProseMirror + Yjs + Hocuspocus 的协作文档架构、扩展规范与实现步骤
-version: 0.3.0
+description: 协作文档编辑器（@collaflow/markdown）技术方案 Skill：以 Y.Text 为唯一真相的 Milkdown + Yjs + Hocuspocus 协作文档架构。用于实现/重构 markdown 包、扩展协同/双端远程光标/高亮/布局分区、或定义其与 core 的集成边界；不适用于服务端持久化与房间管理，以及纯前端非协同富文本需求。
+version: 0.4.0
 owner: collaflow-core-team
-status: draft
+status: active
 scope:
   - '@collaflow/markdown'
 triggers:
@@ -14,6 +14,10 @@ triggers:
   - 代码高亮
   - 版本对比
   - Hocuspocus
+  - Y.Text
+  - 远程光标
+  - 预览区光标
+  - diffApply
 dependencies:
   skills:
     - collaflow-skill-manager

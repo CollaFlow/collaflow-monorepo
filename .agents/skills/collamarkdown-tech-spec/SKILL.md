@@ -1,237 +1,117 @@
 ---
 name: collamarkdown-tech-spec
-description: CollaMarkdown 技术方案 Skill：定义基于 Milkdown + ProseMirror + Yjs 的协作文档架构、扩展规范与实现步骤
-version: 0.3.0
+description: 协作文档编辑器（@collaflow/markdown）技术方案 Skill：以 Y.Text 为唯一真相的 Milkdown + Yjs + Hocuspocus 协作文档架构。用于实现/重构 markdown 包、扩展协同/双端远程光标/高亮/布局分区、或定义其与 core 的集成边界；不适用于服务端持久化与房间管理，以及纯前端非协同富文本需求。
+version: 0.4.0
 owner: collaflow-core-team
-status: draft
+status: active
 ---
 
-# CollaMarkdown 技术方案
+# @collaflow/markdown 技术方案
 
-> 本 Skill 定义 `@collaflow/markdown` 的技术选型、架构设计与实现规范。
-> 目标是在 CollaFlow 现有协同基础设施（Yjs + WebSocket）之上，构建高性能、可二次扩展的协作文档能力。
-> 详细设计见 `packages/markdown/TECH_SPEC.md`。
+> 本 Skill 定义 `@collaflow/markdown` 协作文档编辑器的技术选型、架构原则与实现规范。
+> 核心：**以 Markdown 文本（`Y.Text`）为唯一真相**，源码区（Milkdown WYSIWYG）与预览区共享同一份文本，协同只同步这一份 `Y.Text`。
 
 ## 触发条件
 
-触发条件为以下任一场景：
+触发条件为以下任一场景（适用 / 什么时候用）：
 
-- 需要实现或重构 `@collaflow/markdown` 包
-- 讨论协作文档编辑器选型（Markdown / WYSIWYG / 协同）
-- 需要为 `@collaflow/markdown` 增加高亮、布局分区、样式调整、协同、版本对比等功能
-- 需要定义 `@collaflow/markdown` 与 `@collaflow/core` 的集成边界
+- 实现 / 重构 `@collaflow/markdown` 包
+- 评估协作文档编辑器选型（Markdown / WYSIWYG / 协同）
+- 为 markdown 包加功能：高亮、布局分区、主题、远程光标、选区映射、版本对比
+- 定义 `@collaflow/markdown` 与 `@collaflow/core` 的集成边界
+- 处理预览区 / 源码区光标定位、`Y.Text` 绑定相关问题
+
+不适用场景（什么时候不用，交给别处）：
+
+- 服务端持久化、房间生命周期、Yjs 更新历史存储 → 属 `@collaflow/core`（Hocuspocus 服务）
+- 非协同的纯前端富文本需求 → 本 Skill 的协同 / 光标部分不适用，仅参考其 Milkdown 封装思路
+- Yjs / Hocuspocus 协议、重连、心跳 → 由 `@hocuspocus/provider` 与 `@collaflow/core` 负责
+- 任何含密钥 / 内网地址 / 个人隐私的场景 → 禁止（见禁止事项）
 
 ## 规则
 
-规则说明如下：
+规则说明如下（通用原则，不绑定项目名词；本仓库具体文件 / 接口 / 目录见 `references/`）：
 
-### 规则 1：编辑器底层必须基于 Milkdown
+### 规则 1：唯一真相用可 CRDT 合并的线性文本
 
-`@collaflow/markdown` 的文档编辑器统一使用 [Milkdown](https://milkdown.dev/) 作为基础框架。
+协同编辑器的共享载体应是 `Y.Text` 这类线性结构，而非富文本文档树（`Y.XmlFragment`）。多人编辑按字符级合并，避免「整体替换式覆盖」。
 
-理由：
-- 专为 Markdown 设计，输入输出均为标准 Markdown
-- 底层基于 ProseMirror，文档模型稳定、性能优秀
-- MIT 协议，与 CollaFlow 的 Apache-2.0 协议兼容
-- 插件化架构，易于扩展高亮、自定义节点、主题等能力
+### 规则 2：避免回环用 origin
 
-推荐依赖版本：
+写回真相时带 transaction origin 并据此跳过自身引发的 observe，杜绝回声循环；用字符级 diff 而非整体替换。
 
-```json
-{
-  "@milkdown/core": "^7.22.1",
-  "@milkdown/preset-commonmark": "^7.22.1",
-  "@milkdown/plugin-listener": "^7.22.1",
-  "@milkdown/plugin-prism": "^7.22.1",
-  "@milkdown/plugin-block": "^7.22.1",
-  "@milkdown/utils": "^7.22.1"
-}
-```
+### 规则 3：远端光标用相对位置
 
-### 规则 2：协同层统一走 Hocuspocus
+编码为「第几项」而非「第几个字符」，并发插入导致下标漂移时仍可自愈，不会错位。
 
-`@collaflow/markdown` 不自己实现 WebSocket 协议，而是通过 `@hocuspocus/provider` 连接 `@collaflow/core` 暴露的 Hocuspocus 服务。
+### 规则 4：双端共享同一真相
 
-集成方式：
-- 每个 Markdown 文档对应一个 `Y.Doc`，roomId 即 Hocuspocus 的 document name
-- 编辑器内容绑定到 `Y.XmlFragment('prosemirror')` 类型的共享数据
-- 使用 `y-prosemirror` 桥接 ProseMirror 与 Yjs
-- 用户光标、选区等协同提示通过 Yjs Awareness 机制实现
-- 客户端 `HocuspocusProvider` 与服务端 `@hocuspocus/server` 必须同为 2.x，协议不跨大版本兼容
-- 客户端只做薄封装（`src/collab/provider.ts`），协议、重连、心跳全部交给 Hocuspocus
+源码区与预览区读写同一份文本；光标从真相偏移映射到「真实 DOM 文本偏移」定位，而非解析序列化格式（更脆弱）。
 
-### 规则 3：自定义功能必须通过 Milkdown 插件实现
+### 规则 5：扩展一律插件化
 
-所有扩展功能必须封装为 Milkdown 插件或自定义节点 / mark，保持编辑器核心干净。
+所有自定义能力封装为编辑器插件 / 节点 / mark，保持核心干净。
 
-常见扩展映射：
+### 规则 6：传输交给基础设施
 
-| 功能 | 实现方式 | 推荐插件/API |
-|---|---|---|
-| 代码块语法高亮 | 插件 | `@milkdown/plugin-prism`（默认）或 `@milkdown/plugin-shiki` |
-| 文本高亮/标记 | 自定义 mark | `$mark` + 自定义 CSS |
-| 自定义布局分区 | 自定义 node | `$node` + HTML 输出，配合 remark 解析 |
-| 样式/主题 | 主题插件或 CSS 变量 | `themeFactory` 或覆盖 CSS 变量 |
-| 协同光标 | y-prosemirror 插件 | `yCursorPlugin` + Awareness `user` 字段 |
-| 版本对比 | 工具函数 | Yjs snapshot diff 或 `prosemirror-changeset` |
-
-### 规则 4：包结构遵循统一分层
-
-`packages/markdown/src/` 目录结构必须按以下方式组织（`diff/`、`utils/` 等尚未实现的目录不要预先创建占位空文件）：
-
-```text
-src/
-├── index.ts              # 公共 API 导出
-├── editor/
-│   ├── index.ts          # 编辑器实例封装
-│   ├── factory.ts        # Editor.make() 工厂函数
-│   ├── options.ts        # 编辑器配置类型与默认值
-│   └── plugins/
-│       ├── index.ts      # 插件集合
-│       ├── highlight.ts  # 高亮相关插件
-│       ├── layout.ts     # 自定义布局节点
-│       ├── awareness.ts  # 协同提示插件
-│       └── theme.ts      # 主题/样式配置
-├── collab/
-│   ├── index.ts          # 协同接入入口
-│   ├── yjs-binding.ts    # Yjs 与 ProseMirror 绑定
-│   └── provider.ts       # Hocuspocus provider 封装
-├── diff/
-│   └── index.ts          # 版本对比工具（Phase 5）
-└── types/
-    └── index.ts          # 类型定义
-```
-
-### 规则 5：优先使用项目统一工具链
-
-`@collaflow/markdown` 必须与仓库其他包保持一致：
-- 构建工具：`tsup`
-- 测试框架：`vitest`
-- 包管理：`pnpm`
-- TypeScript：复用根目录 `tsconfig.base.json`
-- 导出格式：CJS + ESM + DTS
-- 浏览器侧代码测试需要 `happy-dom` 或 `jsdom` 提供 DOM 环境
-- **覆盖率：`pnpm --filter @collaflow/markdown run test:coverage` 必须 100%（lines / branches / functions / statements），CI 会卡阈值**
-- 主题色一律从 `@collaflow/design` 读取，禁止在包内硬编码色值
-
-### 规则 6：公共 API 必须保持类型友好
-
-对外暴露的核心 API 应遵循以下接口：
-
-```ts
-export interface CollaMarkdownEditorOptions {
-  root: HTMLElement;
-  defaultValue?: string;
-  collab?: {
-    roomId: string;
-    userId: string;
-    serverUrl: string;
-    user?: { name: string; color: string; avatar?: string };
-  };
-  highlight?: boolean | { type: 'prism' | 'shiki' };
-  theme?: 'light' | 'dark';
-  plugins?: MilkdownPlugin[];
-  onChange?: (markdown: string) => void;
-  onAwarenessChange?: (users: AwarenessUserState[]) => void;
-}
-
-export interface CollaMarkdownEditor {
-  readonly editor: Editor;
-  getMarkdown(): string;
-  setMarkdown(value: string): Promise<void>;
-  getAwarenessUsers(): AwarenessUserState[];
-  destroy(): Promise<void>;
-}
-```
+协同传输（WebSocket / awareness 协议）交给 Hocuspocus，客户端只收口生命周期与本地状态。
 
 ## 示例
 
 示例如下：
 
-### 示例 1：创建带代码高亮的 Milkdown 编辑器
+### 示例 1：基础编辑器
 
 ```ts
 import { createEditor } from '@collaflow/markdown';
 
-async function mount(dom: HTMLElement) {
-  const editor = await createEditor({
-    root: dom,
-    defaultValue: '# Hello\n\n```js\nconst x = 1;\n```',
-    highlight: true,
-    theme: 'light',
-    onChange: (markdown) => console.log(markdown),
-  });
-
-  return editor;
-}
+const editor = await createEditor({
+  root: document.getElementById('editor')!,
+  defaultValue: '# Hello\n\n```js\nconst x = 1;\n```',
+  highlight: true,
+  theme: 'light',
+  onChange: (markdown) => console.log(markdown),
+});
 ```
 
-### 示例 2：接入 Hocuspocus 的 Yjs 协同
+### 示例 2：接入协同 + 远程光标
 
 ```ts
-import { createEditor } from '@collaflow/markdown';
-
-async function mountCollab(dom: HTMLElement, roomId: string, userId: string) {
-  const editor = await createEditor({
-    root: dom,
-    defaultValue: '# 协作文档',
-    collab: {
-      roomId,
-      userId,
-      serverUrl: 'ws://localhost:1234',
-      user: { name: 'Alice', color: '#ff6b6b' },
-    },
-    highlight: true,
-  });
-
-  return editor;
-}
+const editor = await createEditor({
+  root: document.getElementById('editor')!,
+  collab: { roomId: 'doc-1', serverUrl: 'ws://localhost:1234', user: { name: 'Alice', color: '#ff6b6b' } },
+  onAwarenessChange: (users) => console.log('在线用户:', users),
+});
+editor.setLocalSelection(0, 5);          // 上报本地选区（Y.Text 偏移）
+console.log(editor.getRemoteCursors());  // 读取远端光标（已解码为 Y.Text 偏移）
 ```
 
-### 示例 3：定义一个自定义布局节点（Callout）
-
-```ts
-import { $node } from '@milkdown/utils';
-
-export const calloutNode = $node('callout', () => ({
-  group: 'block',
-  content: 'block+',
-  attrs: {
-    type: { default: 'info' },
-  },
-  parseDOM: [{ tag: 'div.callout', getAttrs: (dom) => ({ type: dom.dataset.type }) }],
-  toDOM: (node) => ['div', { class: 'callout', 'data-type': node.attrs.type }, 0],
-}));
-```
+> 完整接口（Markdown 编辑器实例 / `CollaFlowProvider` / 光标工具）见 `references/api.md`。
 
 ## 实施步骤
 
-1. **技术预研**：确认 Milkdown 版本与现有 TypeScript / tsup 工具链兼容
-2. **依赖安装**：在 `packages/markdown` 中添加 `@milkdown/core`、`@milkdown/preset-commonmark`、`y-prosemirror` 等依赖
-3. **基础编辑器**：实现一个可渲染 Markdown 的基础 Milkdown 编辑器
-4. **高亮插件**：接入 Prism 实现代码块语法高亮
-5. **协同绑定**：通过 `y-prosemirror` + `@hocuspocus/provider` 将编辑器接入 core 的 Yjs 文档
-6. **Awareness 提示**：实现远端用户光标、选区、操作提示
-7. **自定义节点**：按需添加 callout、分栏、卡片等布局分区节点
-8. **主题样式**：定义 CollaFlow 统一的 CSS 变量与主题
-9. **版本对比**：基于 Yjs snapshot 或 ProseMirror changeset 实现 diff 能力
-10. **测试覆盖**：为编辑器初始化、插件加载、协同绑定编写 vitest 测试，并保证 100% 覆盖率
+1. 读 `references/architecture.md` 理解 `Y.Text` 架构与数据流。
+2. 改 API / 接口时核对 `references/api.md`。
+3. 加功能 / 建模块遵循 `references/conventions.md` 的规则与禁止事项。
+4. 完成后运行 `pnpm skills:validate` 确认评分 ≥ 80。
 
 ## 禁止事项
 
-- 不要引入与 Milkdown / ProseMirror 定位重叠的富文本编辑器（如 Quill、Draft.js、Slate、TipTap）
-- 不要绕过 `@hocuspocus/provider` 自建 WebSocket 连接或自定义二进制协议
-- 不要把密钥、内网地址、个人隐私数据写入 Skill 或代码注释
-- 不要直接在 `index.ts` 里堆积具体功能实现，必须通过插件或独立模块拆分
-- 不要修改 Milkdown 内部 ProseMirror Schema 的默认行为，除非有明确的扩展需求并通过单测验证
-- 不要将服务端逻辑（如文档持久化、房间管理）下沉到 `@collaflow/markdown`
-- 不要为了凑覆盖率而在 `src/` 里留空占位文件；确实不可达的分支用 `/* v8 ignore */` 标注并说明原因
+- 不要引入与 Milkdown / ProseMirror 定位重叠的富文本编辑器（Quill、Draft.js、Slate、TipTap）。
+- 不要把协同载体从 `Y.Text` 改回 `Y.XmlFragment` / ProseMirror 文档绑定（除非有明确需求并经评审）。
+- 不要对 `Y.Text` 做整体替换式写回；必须用 `diffApply` + transaction origin 防回环。
+- 不要把服务端逻辑（文档持久化、房间管理）下沉到 `@collaflow/markdown`。
+- 不要把密钥、内网地址、个人隐私数据写入 Skill 或代码注释。
+- 不要为了凑覆盖率在 `src/` 里留空占位文件。
+
+> 完整禁止清单与工具链要求见 `references/conventions.md`。
 
 ## 参考
 
-- [Milkdown 官方文档](https://milkdown.dev/)
-- [ProseMirror 指南](https://prosemirror.net/docs/guide/)
-- [y-prosemirror](https://github.com/yjs/y-prosemirror)
-- [Hocuspocus 文档](https://tiptap.dev/docs/hocuspocus)
-- `packages/markdown/TECH_SPEC.md` — 详细技术方案
+- `references/architecture.md` — Y.Text 唯一真相架构、双端绑定、远程光标、cursor-map
+- `references/api.md` — 公共 API 接口（Markdown 编辑器实例 / CollaFlowProvider / 光标工具）
+- `references/conventions.md` — 规则细节、禁止事项、工具链与 100% 覆盖率要求
+- `references/status.md` — 实施阶段状态、已知偏差、TECH_SPEC 同步待办
+- `packages/markdown/src/` — 当前实现（以本 Skill + references 为准）
+- `packages/markdown/TECH_SPEC.md` — 详细文档（⚠️ 当前落后于本 Skill，待同步）
 - `.agents/SKILL.md` — CollaFlow Skill 管理规范
