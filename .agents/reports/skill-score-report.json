@@ -1,5 +1,5 @@
 {
-  "evaluatedAt": "2026-09-09T10:58:19.890Z",
+  "evaluatedAt": "2026-09-10T02:57:39.842Z",
   "rubric": "collaflow@1.0.0",
   "thresholds": {
     "block": 60,
@@ -10,7 +10,7 @@
     {
       "name": "collamarkdown-tech-spec",
       "path": ".agents/skills/collamarkdown-tech-spec",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "status": "draft",
       "generic": false,
       "total": 87,

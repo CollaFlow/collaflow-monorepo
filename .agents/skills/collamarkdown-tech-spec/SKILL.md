@@ -1,7 +1,7 @@
 ---
 name: collamarkdown-tech-spec
 description: CollaMarkdown 技术方案 Skill：定义基于 Milkdown + ProseMirror + Yjs 的协作文档架构、扩展规范与实现步骤
-version: 0.1.0
+version: 0.2.0
 owner: collaflow-core-team
 status: draft
 ---
@@ -10,6 +10,7 @@ status: draft
 
 > 本 Skill 定义 `@collaflow/collamarkdown` 的技术选型、架构设计与实现规范。
 > 目标是在 CollaFlow 现有协同基础设施（Yjs + WebSocket）之上，构建高性能、可二次扩展的协作文档能力。
+> 详细设计见 `packages/collamarkdown/TECH_SPEC.md`。
 
 ## 触发条件
 
@@ -34,15 +35,31 @@ status: draft
 - MIT 协议，与 CollaFlow 的 Apache-2.0 协议兼容
 - 插件化架构，易于扩展高亮、自定义节点、主题等能力
 
+推荐依赖版本：
+
+```json
+{
+  "@milkdown/core": "^7.22.1",
+  "@milkdown/preset-commonmark": "^7.22.1",
+  "@milkdown/plugin-listener": "^7.22.1",
+  "@milkdown/plugin-prism": "^7.22.1",
+  "@milkdown/plugin-block": "^7.22.1",
+  "@milkdown/utils": "^7.22.1"
+}
+```
+
 ### 规则 2：协同层必须复用 collacore 的 Yjs 能力
 
-`collamarkdown` 不单独维护协同连接，而是通过 `@collaflow/collacore` 暴露的 Yjs 文档管理接口接入。
+`collamarkdown` 不单独维护协同连接，而是通过 `@collaflow/collacore` 暴露的 WebSocket 房间协议接入。
 
 集成方式：
 - 每个 Markdown 文档对应一个 `Y.Doc`
-- 编辑器内容绑定到 `Y.XmlFragment` 类型的共享数据
+- 编辑器内容绑定到 `Y.XmlFragment('prosemirror')` 类型的共享数据
 - 使用 `y-prosemirror` 桥接 ProseMirror 与 Yjs
 - 用户光标、选区等协同提示通过 Yjs Awareness 机制实现
+- WebSocket 消息严格遵循 CollaCore 协议：
+  - `0x00` + Yjs document update payload
+  - `0x01` + Yjs awareness update payload
 
 ### 规则 3：自定义功能必须通过 Milkdown 插件实现
 
@@ -52,12 +69,12 @@ status: draft
 
 | 功能 | 实现方式 | 推荐插件/API |
 |---|---|---|
-| 代码块语法高亮 | 插件 | `@milkdown/plugin-prism` 或 `@milkdown/plugin-shiki` |
+| 代码块语法高亮 | 插件 | `@milkdown/plugin-prism`（默认）或 `@milkdown/plugin-shiki` |
 | 文本高亮/标记 | 自定义 mark | `$mark` + 自定义 CSS |
-| 自定义布局分区 | 自定义 node | `$node` + React/Vue/Svelte 组件渲染 |
+| 自定义布局分区 | 自定义 node | `$node` + HTML 输出，配合 remark 解析 |
 | 样式/主题 | 主题插件或 CSS 变量 | `themeFactory` 或覆盖 CSS 变量 |
-| 协同光标 | 插件 + Yjs Awareness | 自定义 widget 渲染远端用户状态 |
-| 版本对比 | 工具函数 | `prosemirror-changeset` 或 Yjs snapshot diff |
+| 协同光标 | y-prosemirror 插件 | `yCursorPlugin` + Awareness `user` 字段 |
+| 版本对比 | 工具函数 | Yjs snapshot diff 或 `prosemirror-changeset` |
 
 ### 规则 4：包结构遵循统一分层
 
@@ -69,6 +86,7 @@ src/
 ├── editor/
 │   ├── index.ts          # 编辑器实例封装
 │   ├── factory.ts        # Editor.make() 工厂函数
+│   ├── options.ts        # 编辑器配置类型与默认值
 │   └── plugins/
 │       ├── index.ts      # 插件集合
 │       ├── highlight.ts  # 高亮相关插件
@@ -78,11 +96,13 @@ src/
 ├── collab/
 │   ├── index.ts          # 协同接入入口
 │   ├── yjs-binding.ts    # Yjs 与 ProseMirror 绑定
-│   └── provider.ts       # collacore 文档 provider 适配
+│   └── provider.ts       # collacore WebSocket provider 适配
 ├── diff/
 │   └── index.ts          # 版本对比工具
-└── types/
-    └── index.ts          # 类型定义
+├── types/
+│   └── index.ts          # 类型定义
+└── utils/
+    └── index.ts          # 辅助函数
 ```
 
 ### 规则 5：优先使用项目统一工具链
@@ -93,6 +113,35 @@ src/
 - 包管理：`pnpm`
 - TypeScript：复用根目录 `tsconfig.base.json`
 - 导出格式：CJS + ESM + DTS
+- 浏览器侧代码测试需要 `happy-dom` 或 `jsdom` 提供 DOM 环境
+
+### 规则 6：公共 API 必须保持类型友好
+
+对外暴露的核心 API 应遵循以下接口：
+
+```ts
+export interface CollaMarkdownEditorOptions {
+  root: HTMLElement;
+  defaultValue?: string;
+  collab?: {
+    roomId: string;
+    userId: string;
+    serverUrl: string;
+    user?: { name: string; color: string; avatar?: string };
+  };
+  highlight?: boolean;
+  theme?: 'light' | 'dark';
+  plugins?: MilkdownPlugin[];
+  onChange?: (markdown: string) => void;
+}
+
+export interface CollaMarkdownEditor {
+  readonly editor: Editor;
+  getMarkdown(): string;
+  setMarkdown(value: string): Promise<void>;
+  destroy(): Promise<void>;
+}
+```
 
 ## 示例
 
@@ -101,19 +150,16 @@ src/
 ### 示例 1：创建带代码高亮的 Milkdown 编辑器
 
 ```ts
-import { Editor, defaultValueCtx, rootCtx } from '@milkdown/core';
-import { commonmark } from '@milkdown/preset-commonmark';
-import { prism, prismConfig } from '@milkdown/plugin-prism';
+import { createEditor } from '@collaflow/collamarkdown';
 
-export async function createEditor(dom: HTMLElement) {
-  const editor = await Editor.make()
-    .config((ctx) => {
-      ctx.set(rootCtx, dom);
-      ctx.set(defaultValueCtx, '# Hello\n\n```js\nconst x = 1;\n```');
-    })
-    .use(commonmark)
-    .use(prism)
-    .create();
+async function mount(dom: HTMLElement) {
+  const editor = await createEditor({
+    root: dom,
+    defaultValue: '# Hello\n\n```js\nconst x = 1;\n```',
+    highlight: true,
+    theme: 'light',
+    onChange: (markdown) => console.log(markdown),
+  });
 
   return editor;
 }
@@ -122,26 +168,20 @@ export async function createEditor(dom: HTMLElement) {
 ### 示例 2：接入 collacore 的 Yjs 协同
 
 ```ts
-import { Editor } from '@milkdown/core';
-import { commonmark } from '@milkdown/preset-commonmark';
-import { collab } from '@milkdown/plugin-collab';
-import * as Y from 'yjs';
-import { yDocFromCollacore } from '@collaflow/collacore';
+import { createEditor } from '@collaflow/collamarkdown';
 
-export async function createCollabEditor(dom: HTMLElement, docId: string) {
-  const ydoc = yDocFromCollacore(docId);
-  const xmlFragment = ydoc.getXmlFragment('prosemirror');
-
-  const editor = await Editor.make()
-    .config((ctx) => {
-      ctx.set(rootCtx, dom);
-    })
-    .use(commonmark)
-    .use(collab)
-    .create();
-
-  // 将编辑器状态绑定到 Yjs xmlFragment
-  bindProseMirrorToYjs(editor, xmlFragment);
+async function mountCollab(dom: HTMLElement, roomId: string, userId: string) {
+  const editor = await createEditor({
+    root: dom,
+    defaultValue: '# 协作文档',
+    collab: {
+      roomId,
+      userId,
+      serverUrl: 'wss://collacore.example.com',
+      user: { name: 'Alice', color: '#ff6b6b' },
+    },
+    highlight: true,
+  });
 
   return editor;
 }
@@ -168,7 +208,7 @@ export const calloutNode = $node('callout', () => ({
 1. **技术预研**：确认 Milkdown 版本与现有 TypeScript / tsup 工具链兼容
 2. **依赖安装**：在 `packages/collamarkdown` 中添加 `@milkdown/core`、`@milkdown/preset-commonmark`、`y-prosemirror` 等依赖
 3. **基础编辑器**：实现一个可渲染 Markdown 的基础 Milkdown 编辑器
-4. **高亮插件**：接入 Prism 或 Shiki 实现代码块语法高亮
+4. **高亮插件**：接入 Prism 实现代码块语法高亮
 5. **协同绑定**：通过 `y-prosemirror` 将编辑器接入 collacore 的 Yjs 文档
 6. **Awareness 提示**：实现远端用户光标、选区、操作提示
 7. **自定义节点**：按需添加 callout、分栏、卡片等布局分区节点
@@ -183,10 +223,12 @@ export const calloutNode = $node('callout', () => ({
 - 不要把密钥、内网地址、个人隐私数据写入 Skill 或代码注释
 - 不要直接在 `index.ts` 里堆积具体功能实现，必须通过插件或独立模块拆分
 - 不要修改 Milkdown 内部 ProseMirror Schema 的默认行为，除非有明确的扩展需求并通过单测验证
+- 不要将服务端逻辑（如文档持久化、房间管理）下沉到 `collamarkdown`
 
 ## 参考
 
 - [Milkdown 官方文档](https://milkdown.dev/)
 - [ProseMirror 指南](https://prosemirror.net/docs/guide/)
 - [y-prosemirror](https://github.com/yjs/y-prosemirror)
+- `packages/collamarkdown/TECH_SPEC.md` — 详细技术方案
 - `.agents/SKILL.md` — CollaFlow Skill 管理规范
