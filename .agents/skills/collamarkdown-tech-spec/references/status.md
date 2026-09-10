@@ -34,6 +34,6 @@
 
 ## 待办
 
-- [ ] **同步 `packages/markdown/TECH_SPEC.md`**：该文件仍描述旧架构（`y-prosemirror` 绑定、`diff/` 目录、Phase 1~4 完成），与代码及本 Skill 不一致，需重写为 Y.Text 架构。
+- [x] **同步 `packages/markdown/TECH_SPEC.md`**：已重写为 Y.Text 架构（见本文档第 1~11 节），与代码及本 Skill 一致。
 - [ ] 评估是否将本 Skill 标记为通用能力（连续两版评分 ≥ 90 且规则稳定后可设 `generic: true`）。
 - [ ] 如做 Phase 5 版本对比，补充 `src/diff/` 与对应单测，并保持 100% 覆盖率。
