@@ -1,5 +1,5 @@
 {
-  "evaluatedAt": "2026-09-10T02:57:39.842Z",
+  "evaluatedAt": "2026-09-10T03:43:31.430Z",
   "rubric": "collaflow@1.0.0",
   "thresholds": {
     "block": 60,
@@ -7,6 +7,26 @@
     "good": 90
   },
   "skills": [
+    {
+      "name": "collaflow-design",
+      "path": ".agents/skills/collaflow-design",
+      "version": "0.1.0",
+      "status": "draft",
+      "generic": false,
+      "total": 90,
+      "dimensions": {
+        "completeness": 20,
+        "consistency": 20,
+        "clarity": 20,
+        "executability": 20,
+        "reusability": 12,
+        "security": 5
+      },
+      "suggestions": [
+        "该 Skill 复用性较好，可考虑设置 generic: true",
+        "评分 90 ≥ 90，建议标记 generic: true 沉淀为通用能力"
+      ]
+    },
     {
       "name": "collamarkdown-tech-spec",
       "path": ".agents/skills/collamarkdown-tech-spec",
@@ -28,10 +48,10 @@
     }
   ],
   "summary": {
-    "total": 1,
+    "total": 2,
     "block": 0,
     "warn": 0,
-    "good": 1,
+    "good": 2,
     "generic": 0
   }
 }

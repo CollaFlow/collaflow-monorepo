@@ -1,0 +1,46 @@
+{
+  "name": "@collaflow/app",
+  "version": "0.1.0",
+  "description": "Next.js + shadcn/ui frontend for CollaFlow",
+  "license": "Apache-2.0",
+  "type": "commonjs",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:static": "cross-env EXPORT_STATIC=true next build",
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint: skipped until eslint is configured'",
+    "clean": "rimraf .next dist"
+  },
+  "dependencies": {
+    "@collaflow/collab-core": "workspace:*",
+    "@collaflow/design": "workspace:*",
+    "@collaflow/markdown": "workspace:*",
+    "@collaflow/mind": "workspace:*",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.479.0",
+    "next": "^15.2.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.6",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
+    "postcss": "^8.5.3",
+    "rimraf": "^5.0.10",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

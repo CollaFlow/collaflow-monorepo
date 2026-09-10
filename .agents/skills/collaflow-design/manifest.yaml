@@ -1,0 +1,26 @@
+name: collaflow-design
+description: CollaFlow 共享样式层 Skill：规范 @collaflow/design 设计令牌、主题、Tailwind 预设与 CSS 变量的使用方式
+version: 0.1.0
+owner: collaflow-core-team
+status: draft
+scope:
+  - design
+  - markdown
+  - mind
+  - app
+dependencies:
+  tools: []
+  skills: []
+triggers:
+  - design
+  - theme
+  - token
+  - tailwind
+  - css
+  - color
+  - spacing
+  - radius
+  - shadow
+  - typography
+replaces: []
+generic: false

@@ -10,13 +10,12 @@
     "pnpm": ">=8"
   },
   "scripts": {
-    "build": "pnpm --filter \"@collaflow/*\" run build",
     "dev": "pnpm --parallel --filter \"@collaflow/*\" run dev",
-    "dev:collacore": "pnpm --filter @collaflow/collacore run dev",
+    "build": "pnpm --filter \"@collaflow/*\" run build",
     "test": "pnpm --filter \"@collaflow/*\" run test",
-    "test:watch": "pnpm --parallel --filter \"@collaflow/*\" run test:watch",
-    "typecheck": "pnpm --filter \"@collaflow/*\" run typecheck",
     "clean": "pnpm --filter \"@collaflow/*\" run clean",
+    "lint": "pnpm --filter \"@collaflow/*\" run lint",
+    "publish:all": "pnpm -r publish --access public",
     "skills:validate": "node scripts/skill-governance.mjs",
     "commit": "cz",
     "changeset": "changeset",
@@ -28,9 +27,11 @@
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog",
       "scopes": [
-        "collacore",
-        "collamind",
-        "collamarkdown",
+        "core",
+        "collab-core",
+        "markdown",
+        "mind",
+        "app",
         "root",
         "deps",
         "ci",
@@ -41,7 +42,8 @@
   },
   "pnpm": {
     "overrides": {
-      "human-id": "4.1.1"
+      "human-id": "4.1.1",
+      "fastify": "5.11.3"
     }
   },
   "devDependencies": {

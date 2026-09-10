@@ -1,0 +1,44 @@
+{
+  "name": "@collaflow/mind",
+  "version": "0.1.0",
+  "description": "Mind Elixir based collaborative mind map for CollaFlow",
+  "license": "Apache-2.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint: skipped until eslint is configured'",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@collaflow/collab-core": "workspace:*",
+    "@collaflow/design": "workspace:*",
+    "mind-elixir": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.6",
+    "rimraf": "^5.0.10",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

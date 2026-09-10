@@ -1,0 +1,56 @@
+{
+  "name": "@collaflow/core",
+  "version": "0.1.0",
+  "description": "NestJS + Fastify backend server for CollaFlow",
+  "license": "Apache-2.0",
+  "type": "commonjs",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "collaflow": "./dist/bin/collaflow.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "prisma"
+  ],
+  "scripts": {
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "start": "node ./dist/bin/collaflow.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint: skipped until eslint is configured'",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@collaflow/collab-core": "workspace:*",
+    "@fastify/static": "^10.1.2",
+    "@hocuspocus/server": "^2.15.2",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-fastify": "^11.0.0",
+    "@prisma/client": "^6.5.0",
+    "fastify": "^5.11.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.6",
+    "prisma": "^6.5.0",
+    "rimraf": "^5.0.10",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

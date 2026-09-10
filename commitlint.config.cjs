@@ -4,9 +4,12 @@
  * 示例：feat(collamind): 支持节点增量布局计算
  */
 const SCOPES = [
-  'collacore',
-  'collamind',
-  'collamarkdown',
+  'core',
+  'collab-core',
+  'design',
+  'markdown',
+  'mind',
+  'app',
   'root',
   'deps',
   'ci',

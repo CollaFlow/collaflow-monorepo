@@ -1,0 +1,16 @@
+@import '@collaflow/design/css/variables.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-color: var(--cf-bg-primary);
+    color: var(--cf-text-primary);
+  }
+}
