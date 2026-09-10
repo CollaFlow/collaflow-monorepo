@@ -13,6 +13,8 @@
     "dev": "pnpm --parallel --filter \"@collaflow/*\" run dev",
     "build": "pnpm --filter \"@collaflow/*\" run build",
     "test": "pnpm --filter \"@collaflow/*\" run test",
+    "typecheck": "pnpm --filter \"@collaflow/*\" run typecheck",
+    "coverage": "pnpm --filter @collaflow/markdown run test:coverage",
     "clean": "pnpm --filter \"@collaflow/*\" run clean",
     "lint": "pnpm --filter \"@collaflow/*\" run lint",
     "publish:all": "pnpm -r publish --access public",
