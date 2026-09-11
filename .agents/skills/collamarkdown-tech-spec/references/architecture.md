@@ -9,6 +9,7 @@
 - 每个文档对应一个 `Y.Doc`，协同内容存于 `Y.Doc.getText('content')`（一个 `Y.Text`）。
 - `CollaFlowProvider.content` 即该 `Y.Text`。本地模式（`collab` 未配置）则用一个独立 `Y.Doc` 的 `Y.Text` 承载，行为一致。
 - 源码区（Milkdown 所见即所得）与预览区共享这同一份 `Y.Text`；任何一方修改都落到 `Y.Text`，再驱动另一端重渲染。
+- Markdown 解析/序列化基于 Milkdown `commonmark` + `@milkdown/preset-gfm`，支持表格、任务列表、脚注、删除线、自动链接。
 
 ```text
 ┌──────────────────────────── 应用层 (App) ────────────────────────────┐
@@ -112,3 +113,30 @@ awareness.setLocalStateField('selection', ...)
 ```
 
 > Yjs sync 与 awareness 的传输封装（0x00 / 0x01）由 Hocuspocus 与 `@hocuspocus/provider` 完成，应用层无需手动分包。
+
+## 7. 编辑器扩展模块与工具函数（非协同部分）
+
+除协同 / 光标外，`@collaflow/markdown` 还提供一组**不触碰 `Y.Text` 真相**的编辑器能力与纯函数工具，全部以插件（`editor/plugins/*`）或工具模块（`src/utils/*`）形式存在，便于测试与复用：
+
+### 7.1 编辑器插件（editor/plugins）
+
+| 插件 | 入口 | 职责 |
+|---|---|---|
+| Mermaid | `createMermaidPlugin()` | ` ```mermaid ` 栅栏 → SVG |
+| 数学公式 | `@milkdown/plugin-math` + `katex`（factory 接入） | 块/行内 KaTeX，DOM 为 `[data-type="math_block"/"math_inline"]` |
+| 图片卡 | `imageCardPlugin` | `.colla-image-card`（缩略图 + 标题 + 链接） |
+| 链接预览 | `createLinkPreviewPlugin()`（+ `LinkPreviewResolver`） | 解析并展示链接元数据 |
+| 斜杠命令 | `createSlashCommandPlugin()` | `/` 唤起命令菜单 |
+| 块把手 / 转换 | `blockHandlePlugin` + `createBlockHandleElement` + `buildConversionItems` | 左侧悬浮把手、块类型转换 |
+| 高亮 / 布局 / 主题 / 任务列表 / 光标渲染 | 既有插件 | 见 §1 与 `conventions.md` 规则 3 |
+
+### 7.2 工具函数（src/utils）
+
+均为纯函数或浏览器侧 glue，不依赖协同运行时，可独立单测：
+
+- `toc.ts`：`buildToc(doc) → TocItem[]`，从 ProseMirror 文档抽取标题层级。
+- `front-matter.ts`：`parseFrontMatter(md) → FrontMatterResult` / `stringifyFrontMatter(data, body)`。
+- `export.ts`：`buildStandaloneHtml(editor, opts)`（自包含 HTML，内联 `collectExportCss` 收集的样式）、`exportHtml` / `exportPdf`（浏览器打印）。
+- `export-docx.ts`：`buildDocxDocument(editor, opts)` 遍历 `editor.getView().state.doc` 生成 `docx@^9` 文档；`exportDocx` 打包为 blob 下载。数学 / Mermaid 经 `html-to-image` 截图嵌入，失败时回退文本，详见 `status.md` 已知偏差。
+
+> 这些模块共用 `editor.getView()` / `getHtml()` 读取渲染结果，但**只读不写** `Y.Text`，因此不改变「Y.Text 唯一真相」的协同语义。

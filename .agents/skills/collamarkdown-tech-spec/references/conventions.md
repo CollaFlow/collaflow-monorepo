@@ -12,10 +12,12 @@
 {
   "@milkdown/core": "^7.22.1",
   "@milkdown/preset-commonmark": "^7.22.1",
+  "@milkdown/preset-gfm": "^7.22.1",
   "@milkdown/plugin-listener": "^7.22.1",
   "@milkdown/plugin-prism": "^7.22.1",
   "@milkdown/plugin-block": "^7.22.1",
-  "@milkdown/utils": "^7.22.1"
+  "@milkdown/utils": "^7.22.1",
+  "prosemirror-state": "^1.4.4"
 }
 ```
 
@@ -35,8 +37,20 @@
 | 代码块高亮 | 插件 | `@milkdown/plugin-prism`（基于 refractor）或 `@milkdown/plugin-shiki` |
 | 文本高亮 / 标记 | 自定义 mark | `$mark` + 自定义 CSS |
 | 自定义布局分区 | 自定义 node | `$node` + HTML 输出，配合 remark 解析 |
+| GFM（表格 / 任务列表 / 脚注 / 删除线 / 自动链接） | 官方 preset | `@milkdown/preset-gfm` |
+| 任务列表点击切换 | 自定义 ProseMirror 插件 | `taskListTogglePlugin`（左侧热区 24px） |
+| Mermaid 图 | 自定义 ProseMirror 插件 | `createMermaidPlugin()`（`editor/plugins/mermaid.ts`，` ```mermaid ` → SVG） |
+| 数学公式（KaTeX） | 官方插件 + 样式 | `@milkdown/plugin-math` + `katex`（`factory.ts` 接入，`import 'katex/dist/katex.min.css'`） |
+| 图片卡 | 自定义节点 + 插件 | `imageCardPlugin`（`editor/plugins/image-card.ts`，`.colla-image-card`） |
+| 链接预览 | 自定义插件 | `createLinkPreviewPlugin()`（`editor/plugins/link-preview.ts`，可注入 `LinkPreviewResolver`） |
+| 斜杠命令 | 自定义插件 | `createSlashCommandPlugin()`（`editor/plugins/slash-command.ts`） |
+| 块把手 / 拖拽 / 块转换 | 自定义插件 | `blockHandlePlugin` + `createBlockHandleElement` + `buildConversionItems`（`editor/plugins/block-handle.ts`） |
 | 样式 / 主题 | 主题插件或 CSS 变量 | `createThemePlugin` 或覆盖 CSS 变量 |
 | 协同光标渲染 | `y-prosemirror` 的 `yCursorPlugin` | `createAwarenessPlugin(awareness)`（仅渲染，不参与文档绑定） |
+| Front Matter | 工具函数 | `parseFrontMatter` / `stringifyFrontMatter`（`utils/front-matter.ts`） |
+| 目录大纲 | 工具函数 | `buildToc` + `TocItem`（`utils/toc.ts`） |
+| 导出 HTML / PDF | 工具函数 | `buildStandaloneHtml` / `exportHtml` / `exportPdf`（`utils/export.ts`） |
+| 导出 Word（.docx） | 工具函数 | `buildDocxDocument` / `exportDocx`（`utils/export-docx.ts`，`docx@^9`） |
 | 版本对比 | 工具函数 | Yjs snapshot diff（Phase 5，尚未实现） |
 
 ### 规则 4：包结构遵循统一分层
@@ -52,6 +66,7 @@ packages/markdown/src/
 │       ├── index.ts         # 插件集合
 │       ├── highlight.ts     # 代码高亮（Prism / refractor）
 │       ├── layout.ts        # Callout / Columns / Column / Card 节点
+│       ├── task-list.ts     # GFM 任务列表复选框点击切换
 │       ├── theme.ts         # CollaFlow 主题 CSS 变量
 │       ├── awareness.ts     # 远端光标 / 选区渲染
 │       └── cursor-map.ts    # 预览区光标映射
@@ -61,7 +76,12 @@ packages/markdown/src/
 │   ├── yjs-binding.ts       # Y.Text ↔ Milkdown 绑定、diffApply、origin
 │   └── cursor.ts            # 相对位置编解码
 ├── styles/
-│   └── notion-style.ts      # 预览区 / 源码区 Notion 风格样式
+│   └── notion-style.ts      # 预览区 / 源码区 Notion 风格样式（含 Mermaid / 数学 / 图片卡 / 链接预览样式）
+├── utils/
+│   ├── toc.ts               # 目录大纲（buildToc / TocItem）
+│   ├── front-matter.ts      # Front Matter 解析 / 序列化
+│   ├── export.ts            # 导出 HTML / PDF
+│   └── export-docx.ts       # 导出 Word（docx v9）
 └── types/
     └── index.ts             # 公共类型定义
 ```
@@ -74,7 +94,7 @@ packages/markdown/src/
 - 测试：`vitest`（浏览器侧代码测试需 `happy-dom` 或 `jsdom` 提供 DOM 环境）
 - 包管理：`pnpm`
 - TypeScript：复用根 `tsconfig.base.json`（含 `noUncheckedIndexedAccess: true`，索引访问返回 `T | undefined`）
-- **覆盖率：`pnpm --filter @collaflow/markdown run test:coverage` 必须 100%（lines / branches / functions / statements），CI 卡阈值**。当前 58 项单测、100% 覆盖。
+- **覆盖率：`pnpm --filter @collaflow/markdown run test:coverage` 必须 100%（lines / branches / functions / statements），CI 卡阈值**。当前 148 项单测、100% 覆盖。
 - 主题色一律从 `@collaflow/design` 读取，禁止在包内硬编码色值。
 
 ## 禁止事项

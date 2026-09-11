@@ -38,6 +38,7 @@ export interface CollaMarkdownEditor {
   readonly content: Y.Text;                       // 协同唯一真相
   getView(): EditorView;                          // 底层 ProseMirror 视图
   getMarkdown(): string;                          // 已 unescapeLeadingHash
+  getHtml(): string;                              // 预览 DOM 的 outerHTML（用于导出）
   setMarkdown(value: string): Promise<void>;
   getAwarenessUsers(): AwarenessUserState[];
   setLocalSelection(anchor: number, head: number): void;  // Y.Text 字符偏移
@@ -108,6 +109,28 @@ export {
 
 export { buildDomTextCounts, markdownOffsetToDomTextOffset } from './editor/plugins/cursor-map';
 
+// 目录大纲 / Front Matter
+export { buildToc } from './utils/toc';
+export type { TocItem } from './utils/toc';
+export { parseFrontMatter, stringifyFrontMatter } from './utils/front-matter';
+export type { FrontMatterResult } from './utils/front-matter';
+
+// 导出 HTML / PDF / Word
+export {
+  buildStandaloneHtml,
+  collectExportCss,
+  downloadFile,
+  exportHtml,
+  exportPdf,
+} from './utils/export';
+export type { StandaloneHtmlOptions } from './utils/export';
+export { buildDocxDocument, exportDocx } from './utils/export-docx';
+export type { DocxExportOptions } from './utils/export-docx';
+
+// 链接预览插件
+export { createLinkPreviewPlugin } from './editor/plugins/link-preview';
+export type { LinkPreviewData, LinkPreviewResolver } from './editor/plugins/link-preview';
+
 export type {
   AwarenessUserInfo,
   CollabOptions,
@@ -125,17 +148,37 @@ export { collaCursorBuilder, collaSelectionBuilder, createAwarenessPlugin } from
 export { configureHighlightLanguages, createHighlightPlugin, refractor, prism, prismConfig } from './highlight';
 export { calloutNode, columnsNode, columnNode, cardNode, layoutNodes } from './layout';
 export { createThemePlugin } from './theme';
+export { taskListTogglePlugin } from './task-list';
+export { createSlashCommandPlugin } from './slash-command';
+export { imageCardPlugin } from './image-card';
+export { createLinkPreviewPlugin } from './link-preview';
+export type { LinkPreviewData, LinkPreviewResolver } from './link-preview';
+export { blockHandlePlugin, createBlockHandleElement, buildConversionItems } from './block-handle';
+export type { BlockConversionItem } from './block-handle';
+export { createMermaidPlugin } from './mermaid';
+export type { MermaidRenderFn } from './mermaid';
 ```
+
+> 数学公式通过 `@milkdown/plugin-math` 在 `factory.ts` 中以 `.use(math)` 接入（非独立插件文件），并 `import 'katex/dist/katex.min.css'`。
 
 ## 6. 关键实现文件
 
 | 文件 | 职责 |
 |---|---|
-| `src/editor/factory.ts` | `createEditor` 工厂：构建插件、绑定 `Y.Text`、生命周期 |
+| `src/editor/factory.ts` | `createEditor` 工厂：构建插件、绑定 `Y.Text`、接入 math/mermaid、`getView`/`getHtml` |
 | `src/editor/options.ts` | 配置合并与默认值（`resolveEditorOptions` / `DEFAULT_EDITOR_OPTIONS`） |
 | `src/collab/provider.ts` | `CollaFlowProvider`：Hocuspocus 客户端，`content: Y.Text` |
 | `src/collab/yjs-binding.ts` | `Y.Text ↔ Milkdown` 绑定、`diffApply`、origin 常量 |
 | `src/collab/cursor.ts` | 相对位置编解码（encode / decode / base64） |
 | `src/editor/plugins/cursor-map.ts` | 预览区光标映射（`buildDomTextCounts` 等） |
 | `src/editor/plugins/awareness.ts` | 远端光标 / 选区渲染（`yCursorPlugin` 封装） |
+| `src/editor/plugins/mermaid.ts` | Mermaid 代码块 → SVG |
+| `src/editor/plugins/image-card.ts` | 图片卡节点（`imageCardPlugin`） |
+| `src/editor/plugins/link-preview.ts` | 链接预览（`createLinkPreviewPlugin` + `LinkPreviewResolver`） |
+| `src/editor/plugins/slash-command.ts` | 斜杠命令菜单 |
+| `src/editor/plugins/block-handle.ts` | 左侧块把手 / 块类型转换 |
+| `src/utils/toc.ts` | 目录大纲抽取（`buildToc` / `TocItem`） |
+| `src/utils/front-matter.ts` | Front Matter 解析 / 序列化 |
+| `src/utils/export.ts` | 导出 HTML / PDF（自包含 HTML + 浏览器打印） |
+| `src/utils/export-docx.ts` | 导出 Word（`buildDocxDocument` / `exportDocx`，docx v9） |
 | `src/styles/notion-style.ts` | 预览区 / 源码区 Notion 风格样式 |

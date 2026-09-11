@@ -1,6 +1,6 @@
 name: collamarkdown-tech-spec
-description: 协作文档编辑器（@collaflow/markdown）技术方案 Skill：以 Y.Text 为唯一真相的 Milkdown + Yjs + Hocuspocus 协作文档架构。用于实现/重构 markdown 包、扩展协同/双端远程光标/高亮/布局分区、或定义其与 core 的集成边界；不适用于服务端持久化与房间管理，以及纯前端非协同富文本需求。
-version: 0.4.0
+description: 协作文档编辑器（@collaflow/markdown）技术方案 Skill：以 Y.Text 为唯一真相的 Milkdown + Yjs + Hocuspocus 协作文档架构，并扩展 Mermaid/数学(KaTeX)/图片卡/链接预览/斜杠命令/块把手/目录/导出(HTML/PDF/Word)。用于实现/重构 markdown 包、扩展协同/双端远程光标/GFM/高亮/布局分区/导出，或定义其与 core 的集成边界；不适用于服务端持久化与房间管理，以及纯前端非协同富文本需求。
+version: 0.6.0
 owner: collaflow-core-team
 status: active
 scope:
@@ -12,12 +12,27 @@ triggers:
   - Markdown 编辑器
   - 文档协同
   - 代码高亮
+  - GFM
   - 版本对比
   - Hocuspocus
   - Y.Text
   - 远程光标
   - 预览区光标
   - diffApply
+  - Mermaid
+  - KaTeX
+  - 数学公式
+  - 图片卡
+  - 链接预览
+  - 斜杠命令
+  - 块把手
+  - 块转换
+  - Front Matter
+  - 目录大纲
+  - 导出 HTML
+  - 导出 PDF
+  - 导出 Word
+  - 导出 docx
 dependencies:
   skills:
     - collaflow-skill-manager
