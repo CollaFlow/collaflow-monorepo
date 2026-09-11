@@ -1,6 +1,6 @@
 # CollaMarkdown 技术方案
 
-> 版本：0.4.0
+> 版本：0.5.0
 > 状态：已实现（与 `@collaflow/markdown` 当前代码一致）
 > 目标：在 CollaFlow 协同基础设施之上，构建基于 Milkdown + ProseMirror + Yjs（**以 `Y.Text` 为唯一真相**）+ Hocuspocus 的协作文档能力。
 
@@ -12,7 +12,7 @@
 
 - 提供标准 Markdown 输入/输出的所见即所得编辑器。
 - 复用 CollaFlow Core（`@collaflow/core`）基于 Hocuspocus 的 Yjs 协同通道，实现多人实时协同编辑。
-- 支持代码块语法高亮、文本高亮、自定义布局节点（Callout / 分栏 / 卡片）。
+- 支持代码块语法高亮、GFM（表格 / 任务列表 / 脚注 / 删除线 / 自动链接）、文本高亮、自定义布局节点（Callout / 分栏 / 卡片）。
 - 提供预览区 / 源码区双端叠层远程光标。
 - 保持包内分层清晰，所有扩展通过 Milkdown 插件实现。
 
@@ -80,6 +80,7 @@ packages/markdown/src/
 │       ├── index.ts         # 插件集合（highlight/layout/awareness/theme）
 │       ├── highlight.ts     # 代码块高亮（Prism / refractor）
 │       ├── layout.ts        # Callout / Columns / Column / Card 自定义节点
+│       ├── task-list.ts     # GFM 任务列表复选框点击切换
 │       ├── theme.ts         # CollaFlow 主题 CSS 变量
 │       ├── awareness.ts     # 远端光标 / 选区渲染（yCursorPlugin 封装）
 │       └── cursor-map.ts    # 预览区光标映射（buildDomTextCounts 等）
@@ -242,7 +243,7 @@ awareness.setLocalStateField('selection', ...)
 
 - 使用 `Editor.make()` 创建 Milkdown 实例，默认注入 `commonmark` + `listener` + `block` preset。
 - `resolveEditorOptions(options)` 合并默认值（`defaultValue: ''` / `highlight: true` / `theme: 'light'`）。
-- 插件列表：`createThemePlugin(theme)` + 高亮插件 + `layoutNodes` + 用户插件 + `createCollabPlugins(content)`。
+- 插件列表：`createThemePlugin(theme)` + 高亮插件 + `layoutNodes` + `gfm` + `taskListTogglePlugin` + 用户插件 + `createCollabPlugins(content)`。
 - `onChange` 通过 `listenerCtx.markdownUpdated` 回调，输出 `unescapeLeadingHash(markdown)`。
 - `getMarkdown()` 返回 `unescapeLeadingHash(editor.action(getMarkdown()))`。
 - 存在 `collab` 配置时自动 `provider.connect()`；返回的实例暴露 `content` / `getView` / `setLocalSelection` / `getRemoteCursors` / `getAwarenessUsers`。
@@ -308,6 +309,18 @@ awareness.setLocalStateField('selection', ...)
 
 > 注：当前布局节点已注册 schema 与 DOM 渲染，Markdown 双向转换（remark 插件）需后续迭代完善。
 
+### 6.9 GFM 支持
+
+通过 `@milkdown/preset-gfm` 统一提供表格、任务列表、脚注、删除线、自动链接的 schema 与输入规则：
+
+- 表格：渲染 `<table>`，表头背景使用 `--cf-bg-tertiary`，边框使用 `--cf-border-default`。
+- 任务列表：渲染为 `<li data-item-type="task" data-checked="...">`；`taskListTogglePlugin` 监听左侧 24px 热区点击，调用 `setNodeMarkup` 切换 `checked` 属性。
+- 脚注：渲染为 `<sup data-type="footnote_reference">` 与 `<dl data-type="footnote_definition">`。
+- 删除线：`<del>`，颜色使用 `--cf-text-secondary`。
+- 自动链接：GFM 自动识别的 URL 渲染为 `<a>`，颜色使用 `--cf-accent-blue`。
+
+所有 GFM 样式统一收敛到 `notion-style.ts`，全部使用 `@collaflow/design` 的 `--cf-*` CSS 变量。
+
 ### 6.9 序列化转义约定
 
 Milkdown 序列化 Markdown 时会在行首防御性转义 `#` / `>` / `*` 等（如 `#` → `\#`）。当前策略用 **`unescapeLeadingHash(markdown)`** 仅还原「行首的 `\#`」为 `#`，其余转义保留。该函数在 `onChange` 回调、`getMarkdown()` 返回值、以及 `diffApply` 写回 `Y.Text` 三处统一生效。
@@ -329,7 +342,9 @@ Milkdown 序列化 Markdown 时会在行首防御性转义 `#` / `>` / `*` 等�
     "@milkdown/plugin-listener": "^7.22.1",
     "@milkdown/plugin-prism": "^7.22.1",
     "@milkdown/preset-commonmark": "^7.22.1",
+    "@milkdown/preset-gfm": "^7.22.1",
     "@milkdown/utils": "^7.22.1",
+    "prosemirror-state": "^1.4.4",
     "refractor": "^5.0.0",
     "y-prosemirror": "^1.3.7",
     "y-protocols": "^1.0.6",
@@ -405,7 +420,7 @@ Milkdown 序列化 Markdown 时会在行首防御性转义 `#` / `>` / `*` 等�
 - 修复预览空行点击选区偏移错算到文末（`getDomTextOffset` 改用 Range 量化）。
 - 修复行首 `#` 被序列化为 `\#`（`unescapeLeadingHash` 仅还原行首 `\#`）。
 - 修正 `cursor-map` 对 `emphasis` / `inlineCode` / `hardbreak` 节点名的映射。
-- 补充单测，markdown 包 58 项全过、覆盖率 100%。
+- 补充单测，markdown 包 67 项全过、覆盖率 100%。
 
 ### Phase 5：版本对比 ❌ 未实现
 

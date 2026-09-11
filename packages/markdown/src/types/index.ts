@@ -5,6 +5,7 @@ import type * as Y from 'yjs';
 import type { EditorView } from 'prosemirror-view';
 
 import type { RemoteCursor } from '../collab/cursor';
+import type { LinkPreviewResolver } from '../editor/plugins/link-preview';
 
 /**
  * 协同用户信息。
@@ -69,6 +70,8 @@ export interface CollaMarkdownEditorOptions {
   theme?: ThemeConfig;
   /** 额外 Milkdown 插件 */
   plugins?: MilkdownPlugin[];
+  /** 链接卡片预览元数据解析器（可选） */
+  linkPreviewResolver?: LinkPreviewResolver;
   /** 内容变更回调 */
   onChange?: (markdown: string) => void;
   /** 在线用户列表变化回调 */
@@ -87,6 +90,8 @@ export interface CollaMarkdownEditor {
   getView(): EditorView;
   /** 获取当前 Markdown 内容 */
   getMarkdown(): string;
+  /** 获取当前渲染后的 HTML（含 `.colla-md` 容器与内联主题变量，用于导出） */
+  getHtml(): string;
   /** 设置 Markdown 内容（会重置编辑器状态） */
   setMarkdown(value: string): Promise<void>;
   /** 获取当前在线用户列表（需启用协同） */

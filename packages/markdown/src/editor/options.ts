@@ -16,8 +16,8 @@ export const DEFAULT_EDITOR_OPTIONS: Required<
  */
 export function resolveEditorOptions(
   options: CollaMarkdownEditorOptions
-): Required<Omit<CollaMarkdownEditorOptions, 'collab' | 'plugins' | 'onChange' | 'onAwarenessChange'>> &
-  Pick<CollaMarkdownEditorOptions, 'collab' | 'plugins' | 'onChange' | 'onAwarenessChange'> {
+): Required<Omit<CollaMarkdownEditorOptions, 'collab' | 'plugins' | 'linkPreviewResolver' | 'onChange' | 'onAwarenessChange'>> &
+  Pick<CollaMarkdownEditorOptions, 'collab' | 'plugins' | 'linkPreviewResolver' | 'onChange' | 'onAwarenessChange'> {
   return {
     root: options.root,
     defaultValue: options.defaultValue ?? DEFAULT_EDITOR_OPTIONS.defaultValue,
@@ -25,6 +25,7 @@ export function resolveEditorOptions(
     theme: options.theme ?? DEFAULT_EDITOR_OPTIONS.theme,
     collab: options.collab,
     plugins: options.plugins,
+    linkPreviewResolver: options.linkPreviewResolver,
     onChange: options.onChange,
     onAwarenessChange: options.onAwarenessChange,
   };

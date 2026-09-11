@@ -4,6 +4,8 @@ import { InitReady, editorCtx } from '@milkdown/core';
 import { listenerCtx } from '@milkdown/plugin-listener';
 import { replaceAll } from '@milkdown/utils';
 
+import { parseFrontMatter, stringifyFrontMatter } from '../utils/front-matter';
+
 /** Milkdown 编辑回写 Y.Text 时使用的 transaction origin。 */
 export const YJS_ORIGIN_MILKDOWN = 'colla-md:milkdown';
 /** 源码区（textarea）编辑写入 Y.Text 时使用的 transaction origin。 */
@@ -68,15 +70,22 @@ export function createCollabPlugins(content: Y.Text): MilkdownPlugin {
     await ctx.wait(InitReady);
     const editor = ctx.get(editorCtx);
 
-    // Y.Text -> Milkdown
+    // Y.Text -> Milkdown：仅渲染「正文」部分，Front Matter 交给属性面板展示，
+    // 避免 `---` 在 WYSIWYG 中被渲染成 `<hr>` / 乱码。
     content.observe((_, transaction) => {
       if (transaction.origin === YJS_ORIGIN_MILKDOWN) return;
-      void editor.action(replaceAll(content.toString()));
+      const { body } = parseFrontMatter(content.toString());
+      void editor.action(replaceAll(body));
     });
 
-    // Milkdown -> Y.Text
+    // Milkdown -> Y.Text：把 Front Matter 重新拼回真相（content 此时仍含旧 FM），
+    // 保证源码区 / 协同伙伴始终拿到完整文档。
     ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
-      diffApply(content, unescapeLeadingHash(markdown), YJS_ORIGIN_MILKDOWN);
+      const fm = parseFrontMatter(content.toString());
+      const full = fm.hasFrontMatter
+        ? stringifyFrontMatter(fm.data, unescapeLeadingHash(markdown))
+        : unescapeLeadingHash(markdown);
+      diffApply(content, full, YJS_ORIGIN_MILKDOWN);
     });
   };
 }

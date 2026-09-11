@@ -2,15 +2,19 @@ import * as Y from 'yjs';
 import { Editor, defaultValueCtx, editorViewCtx, rootCtx } from '@milkdown/core';
 import type { Ctx, MilkdownPlugin } from '@milkdown/ctx';
 import { commonmark } from '@milkdown/preset-commonmark';
+import { gfm } from '@milkdown/preset-gfm';
 import { listener, listenerCtx } from '@milkdown/plugin-listener';
 import { getMarkdown, replaceAll } from '@milkdown/utils';
 import { block } from '@milkdown/plugin-block';
+import { math } from '@milkdown/plugin-math';
+import 'katex/dist/katex.min.css';
 import type { EditorView } from 'prosemirror-view';
 
 import type { CollaMarkdownEditor, CollaMarkdownEditorOptions } from '../types';
 import { resolveEditorOptions } from './options';
-import { CollaFlowProvider, createCollabPlugins, unescapeLeadingHash } from '../collab';
-import { createHighlightPlugin, layoutNodes, createThemePlugin } from './plugins';
+import { CollaFlowProvider, createCollabPlugins, diffApply, unescapeLeadingHash, YJS_ORIGIN_MILKDOWN } from '../collab';
+import { createHighlightPlugin, layoutNodes, createThemePlugin, taskListTogglePlugin, createSlashCommandPlugin, imageCardPlugin, createLinkPreviewPlugin, blockHandlePlugin, createMermaidPlugin } from './plugins';
+import { parseFrontMatter } from '../utils/front-matter';
 
 /**
  * 构建编辑器所需的 Milkdown 插件列表。
@@ -30,6 +34,12 @@ function buildPlugins(
     createThemePlugin(resolved.theme),
     ...(highlight?.plugins ?? []),
     ...layoutNodes,
+    taskListTogglePlugin,
+    createSlashCommandPlugin(),
+    imageCardPlugin,
+    createLinkPreviewPlugin(resolved.linkPreviewResolver),
+    blockHandlePlugin,
+    createMermaidPlugin(),
     ...(resolved.plugins ?? []),
     createCollabPlugins(content),
   ];
@@ -59,7 +69,7 @@ function setupAwarenessChangeListener(
  * Phase 1~4 实现能力：
  * - 基于 Milkdown 渲染 Markdown
  * - 接入 listener 插件，支持 onChange 回调
- * - 默认启用 commonmark、prism 代码高亮、block 菜单
+ * - 默认启用 commonmark、GFM（表格/任务列表/脚注/自动链接）、prism 代码高亮、block 菜单
  * - 以 Markdown 文本（Y.Text）为唯一真相的可选协同：源码区与预览区都读写同一份文本
  * - 自定义布局节点（Callout / Columns / Column / Card）
  * - CollaFlow 主题 CSS 变量
@@ -81,7 +91,8 @@ export async function createEditor(
   const editor = await Editor.make()
     .config((ctx) => {
       ctx.set(rootCtx, resolved.root);
-      ctx.set(defaultValueCtx, resolved.defaultValue);
+      // 编辑器只渲染正文，Front Matter 由属性面板展示（避免 `---` 误渲染）
+      ctx.set(defaultValueCtx, parseFrontMatter(resolved.defaultValue).body);
 
       configureHighlight?.(ctx);
 
@@ -92,8 +103,10 @@ export async function createEditor(
       }
     })
     .use(commonmark)
+    .use(gfm)
     .use(listener)
     .use(block)
+    .use(math)
     .use(dynamicPlugins)
     .create();
 
@@ -119,8 +132,15 @@ export async function createEditor(
     getMarkdown() {
       return unescapeLeadingHash(editor.action(getMarkdown()));
     },
+    getHtml() {
+      const view = editor.action((ctx) => ctx.get(editorViewCtx)) as unknown as EditorView;
+      return view.dom.outerHTML;
+    },
     async setMarkdown(value: string) {
-      await editor.action(replaceAll(value));
+      const { body } = parseFrontMatter(value);
+      // 真相保留完整文档（含 Front Matter），编辑器仅渲染正文
+      diffApply(content, value, YJS_ORIGIN_MILKDOWN);
+      await editor.action(replaceAll(body));
     },
     getAwarenessUsers() {
       return provider?.getAwarenessUsers() ?? [];
