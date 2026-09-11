@@ -2,11 +2,17 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { InputEvent, MouseEvent } from 'react';
-import type { CollaMarkdownEditor, RemoteCursor } from '@collaflow/markdown';
+import type { CollaMarkdownEditor, FrontMatterResult, RemoteCursor, TocItem } from '@collaflow/markdown';
 import {
   buildDomTextCounts,
+  buildToc,
+  collectExportCss,
   diffApply,
+  exportDocx,
+  exportHtml,
+  exportPdf,
   markdownOffsetToDomTextOffset,
+  parseFrontMatter,
   YJS_ORIGIN_TEXTAREA,
 } from '@collaflow/markdown';
 
@@ -154,6 +160,14 @@ function RemoteCaret({ top, left, height, color, name }: RenderedCursor) {
   );
 }
 
+/** 将 Front Matter 值格式化为可展示的纯文本。 */
+function formatFmValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (Array.isArray(value)) return value.map((v) => String(v)).join(', ');
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
 export function MarkdownEditor({
   roomId,
   serverUrl,
@@ -174,6 +188,8 @@ export function MarkdownEditor({
   const [version, setVersion] = useState(0);
   const [textCursors, setTextCursors] = useState<RenderedCursor[]>([]);
   const [previewCursors, setPreviewCursors] = useState<RenderedCursor[]>([]);
+  const [toc, setToc] = useState<TocItem[]>([]);
+  const [frontMatter, setFrontMatter] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -279,13 +295,61 @@ export function MarkdownEditor({
     }
   }, []);
 
-  /** 重新计算预览区「Markdown 偏移 → 真实文本偏移」映射。 */
+  /** 重新计算预览区「Markdown 偏移 → 真实文本偏移」映射，并同步目录大纲与 Front Matter。 */
   const recomputePreviewCounts = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
     const view = editor.getView();
-    countsRef.current = buildDomTextCounts(view.state.doc, editor.getMarkdown());
+    const md = editor.getMarkdown();
+    countsRef.current = buildDomTextCounts(view.state.doc, md);
+    setToc(buildToc(md));
+
+    const content = contentRef.current;
+    if (content) {
+      const fm: FrontMatterResult = parseFrontMatter(content.toString());
+      setFrontMatter(fm.hasFrontMatter ? fm.data : null);
+    }
   }, []);
+
+  /** 点击目录项 → 平滑滚动到对应标题（按文档顺序与渲染标题一一对应）。 */
+  const scrollToHeading = useCallback((index: number) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const view = editor.getView();
+    const headings = view.dom.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const el = headings[index] as HTMLElement | undefined;
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  /** 推断导出文件名/标题：Front Matter title > 首个 H1 > 默认 */
+  const deriveTitle = useCallback((): string => {
+    if (frontMatter && typeof frontMatter.title === 'string' && frontMatter.title) {
+      return frontMatter.title;
+    }
+    const h1 = editorRef.current?.getView().dom.querySelector('h1');
+    return (h1?.textContent?.trim() || 'document') as string;
+  }, [frontMatter]);
+
+  /** 导出为独立 HTML 文件 */
+  const handleExportHtml = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    exportHtml({ title: deriveTitle(), bodyHtml: editor.getHtml(), css: collectExportCss() });
+  }, [deriveTitle]);
+
+  /** 导出为 PDF（新窗口打印 → 另存为 PDF） */
+  const handleExportPdf = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    exportPdf({ title: deriveTitle(), bodyHtml: editor.getHtml(), css: collectExportCss() });
+  }, [deriveTitle]);
+
+  /** 导出为 Word (.docx) */
+  const handleExportDocx = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    void exportDocx(editor, { title: deriveTitle() });
+  }, [deriveTitle]);
 
   // 编辑源码 → 最小字符差异写入 content（本地输入，光标稳定）
   const handleSourceInput = useCallback((e: InputEvent<HTMLTextAreaElement>) => {
@@ -368,65 +432,133 @@ export function MarkdownEditor({
 
   return (
     <div
-      ref={containerRef}
       className={`flex w-full overflow-hidden rounded-lg border border-border bg-card ${
         isResizing ? 'select-none' : ''
       }`}
       style={{ height: '70vh', minHeight: '420px' }}
     >
-      {/* 预览（WYSIWYG） */}
-      <section
-        className="flex h-full flex-col overflow-hidden"
-        style={{ width: `${leftWidth}%` }}
-      >
+      {/* 目录大纲 */}
+      <aside className="flex h-full w-56 shrink-0 flex-col overflow-hidden border-r border-border bg-card">
         <div className="border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
-          预览
+          目录
         </div>
-        <div ref={previewWrapRef} className="relative h-full flex-1 overflow-hidden">
-          <div ref={previewRef} className="colla-editor h-full w-full overflow-auto p-4" />
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            {previewCursors.map((c) => (
-              <RemoteCaret key={c.id} {...c} />
-            ))}
-          </div>
-        </div>
-      </section>
+        <nav className="h-full flex-1 overflow-auto p-2">
+          {toc.length === 0 ? (
+            <p className="px-2 py-1 text-xs text-muted-foreground">暂无标题</p>
+          ) : (
+            toc.map((item, i) => (
+              <button
+                key={`${item.offset}-${i}`}
+                type="button"
+                onClick={() => scrollToHeading(i)}
+                title={item.title}
+                className="block w-full truncate rounded px-2 py-1 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                style={{ paddingLeft: `${8 + (item.level - 1) * 12}px` }}
+              >
+                {item.title || '(空标题)'}
+              </button>
+            ))
+          )}
+        </nav>
+      </aside>
 
-      {/* 拖拽分隔条 */}
-      <div
-        onMouseDown={startResize}
-        role="separator"
-        aria-orientation="vertical"
-        className="w-1.5 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-accent"
-      />
-
-      {/* 源码（可编辑 Markdown，非受控） */}
-      <section
-        className="flex h-full flex-col overflow-hidden"
-        style={{ width: `${100 - leftWidth}%` }}
-      >
-        <div className="border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
-          源码（Markdown）
-        </div>
-        <div ref={sourceWrapRef} className="relative h-full flex-1 overflow-hidden">
-          <textarea
-            ref={textareaRef}
-            defaultValue={defaultValue}
-            onInput={handleSourceInput}
-            onKeyUp={handleSourceSelection}
-            onMouseUp={handleSourceSelection}
-            onSelect={handleSourceSelection}
-            spellCheck={false}
-            placeholder="在此编辑 Markdown 源码…"
-            className="h-full w-full flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-relaxed text-foreground outline-none"
-          />
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            {textCursors.map((c) => (
-              <RemoteCaret key={c.id} {...c} />
-            ))}
+      {/* 预览（WYSIWYG） + 源码（Markdown）分栏 */}
+      <div ref={containerRef} className="flex h-full min-w-0 flex-1 overflow-hidden">
+        {/* 预览 */}
+        <section
+          className="flex h-full flex-col overflow-hidden"
+          style={{ width: `${leftWidth}%` }}
+        >
+          <div className="flex items-center justify-between border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
+            <span>预览</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleExportHtml}
+                className="rounded px-2 py-0.5 text-foreground transition-colors hover:bg-muted"
+                title="导出为独立 HTML 文件"
+              >
+                导出 HTML
+              </button>
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                className="rounded px-2 py-0.5 text-foreground transition-colors hover:bg-muted"
+                title="打印 / 另存为 PDF"
+              >
+                导出 PDF
+              </button>
+              <button
+                type="button"
+                onClick={handleExportDocx}
+                className="rounded px-2 py-0.5 text-foreground transition-colors hover:bg-muted"
+                title="导出为 Word (.docx)"
+              >
+                导出 Word
+              </button>
+            </div>
           </div>
-        </div>
-      </section>
+          {frontMatter && (
+            <div className="border-b border-border bg-card px-3 py-2 text-sm">
+              <div className="mb-1 text-xs text-muted-foreground">属性</div>
+              {Object.entries(frontMatter).map(([key, value]) => (
+                <div key={key} className="flex gap-2 py-0.5">
+                  <span className="w-28 shrink-0 truncate text-muted-foreground" title={key}>
+                    {key}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate" title={formatFmValue(value)}>
+                    {formatFmValue(value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div ref={previewWrapRef} className="relative h-full flex-1 overflow-hidden">
+            <div ref={previewRef} className="colla-editor h-full w-full overflow-auto p-4" />
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              {previewCursors.map((c) => (
+                <RemoteCaret key={c.id} {...c} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 拖拽分隔条 */}
+        <div
+          onMouseDown={startResize}
+          role="separator"
+          aria-orientation="vertical"
+          className="w-1.5 shrink-0 cursor-col-resize bg-border transition-colors hover:bg-accent"
+        />
+
+        {/* 源码（可编辑 Markdown，非受控） */}
+        <section
+          className="flex h-full flex-col overflow-hidden"
+          style={{ width: `${100 - leftWidth}%` }}
+        >
+          <div className="border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
+            源码（Markdown）
+          </div>
+          <div ref={sourceWrapRef} className="relative h-full flex-1 overflow-hidden">
+            <textarea
+              ref={textareaRef}
+              defaultValue={defaultValue}
+              onInput={handleSourceInput}
+              onKeyUp={handleSourceSelection}
+              onMouseUp={handleSourceSelection}
+              onSelect={handleSourceSelection}
+              spellCheck={false}
+              placeholder="在此编辑 Markdown 源码…"
+              className="h-full w-full flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-relaxed text-foreground outline-none"
+            />
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              {textCursors.map((c) => (
+                <RemoteCaret key={c.id} {...c} />
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
